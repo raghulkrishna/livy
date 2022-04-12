@@ -1,0 +1,63 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+sudo: required
+dist: xenial
+language: scala
+  - 2.11.12
+
+matrix:
+  include:
+  - name: "Spark 2.4 Unit Tests"
+    env: MVN_FLAG='-Pthriftserver -DskipITs'
+  - name: "Spark 2.4 ITs"
+    env: MVN_FLAG='-Pthriftserver -DskipTests'
+  - name: "Spark 3.0 Unit Tests"
+    env: MVN_FLAG='-Pthriftserver -Pspark-3.0 -DskipITs'
+  - name: "Spark 3.0 ITs"
+    env: MVN_FLAG='-Pthriftserver -Pspark-3.0 -DskipTests'
+
+jdk:
+  - openjdk8
+
+cache:
+  pip: true
+  directories:
+    - $HOME/.m2
+
+install:
+  - sudo add-apt-repository 'deb https://cloud.r-project.org/bin/linux/ubuntu xenial-cran35/'
+  - sudo apt-get update
+  - sudo apt-get -qq --allow-unauthenticated install r-base
+  - sudo apt-get -qq install python3-pip python-dev
+  - sudo apt-get -qq install libkrb5-dev
+  - sudo apt-get -qq remove python-setuptools
+  - sudo pip2 -q install --upgrade "pip < 10.0.0" "setuptools < 36"
+  - sudo python3 -m pip -q install --upgrade "pip < 10.0.0" "setuptools < 36"
+  - sudo pip2 -q install codecov cloudpickle
+  - sudo python3 -m pip -q install cloudpickle
+  - sudo pip2 -q install "requests >= 2.10.0" pytest flaky flake8 requests-kerberos
+  - sudo pip3 -q install "requests >= 2.10.0" pytest flaky requests-kerberos
+
+script:
+  - mvn $MVN_FLAG -Dmaven.javadoc.skip=true -B -V -e verify
+
+after_success:
+  - bash <(curl -s https://codecov.io/bash)
+
+after_failure:
+  - for log in `find * -name "*.log" -o -name "stderr" -o -name "stdout" -o -name "rat.txt"`; do echo "=========$log========="; cat $log; done
